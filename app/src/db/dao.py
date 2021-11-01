@@ -321,14 +321,11 @@ def sell_stock(account_number:int,ticker: str, volume: int, sale_price: float) -
 
     # get current quantity
     db_cnx: MySQLConnection = get_cnx()
-    cursor = db_cnx.cursor(dictionary=True)
+    cursor = db_cnx.cursor()
     sql:str='select quantity from portfolio where account_number=%s and ticker=%s'
     cursor.execute(sql, (account_number, ticker))
     row=cursor.fetchone()
-    current_quantity=[]
-    for i in row:
-        current_quantity.append(i)
-    current_quantity=current_quantity[0]
+    current_quantity=row[0]
     db_cnx.close()
 
     #make sure not to sell more than we have
@@ -344,8 +341,8 @@ def sell_stock(account_number:int,ticker: str, volume: int, sale_price: float) -
         db_cnx.commit()
 
     elif current_quantity>volume:
-        sql:str='update from portfolio set quantity=quantity-%s where account_number=%s and ticker=%s'
-        cursor.execute(sql, (volume,account_number, ticker))
+        sql:str='update portfolio set quantity=%s-%s where account_number=%s and ticker=%s'
+        cursor.execute(sql, (current_quantity,volume,account_number, ticker))
         db_cnx.commit()
     db_cnx.close()
 
