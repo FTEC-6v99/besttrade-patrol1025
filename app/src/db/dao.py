@@ -12,6 +12,7 @@ from app.src.domain.Investor import Investor
 from app.src.domain.Account import Account
 from app.src.domain.Portfolio import Portfolio
 
+
 def get_cnx() -> MySQLConnection:
     return connect(**config.dbparams)
 
@@ -42,12 +43,14 @@ def get_investor_by_id(id: int) -> t.Optional[Investor]:
     cursor = db_cnx.cursor(dictionary=True) # always pass dictionary = True
     sql: str = 'select * from investor where id = %s'
     cursor.execute(sql, (id,))
-    if cursor.rowcount == 0:
+    result=cursor.fetchall()
+    if len(result) == 0:
         return None
     else:
-        row = cursor.fetchone()
+        row = result[0]
         investor = Investor(row['name'], row['status'], row['id'])
-        return investor 
+        return investor
+    db_cnx.close()
 
 def get_investors_by_name(name: str) -> list[Investor]:
     '''
@@ -59,7 +62,7 @@ def get_investors_by_name(name: str) -> list[Investor]:
     sql: str = 'select * from investor where name = %s'
     cursor.execute(sql, (name,))
     if cursor.rowcount == 0:
-        investors = []
+        investors: list[dict] = []
     else:
         rows = cursor.fetchall()
         for row in rows:
@@ -72,10 +75,10 @@ def create_investor(investor: Investor) -> None:
     '''
         Create a new investor in the db given an investor object [C]
     '''
-    db_cnx = get_cnx()
+    db_cnx:MySQLConnection = get_cnx()
     cursor = db_cnx.cursor()
-    sql = 'insert into investor (name, status) values (%s, %s)'
-    cursor.execute(sql, (investor.name, investor.status))
+    sql:str = 'insert into investor (id, name, status) values (%s, %s, %s)'
+    cursor.execute(sql, (investor.id,investor.name, investor.status))
     db_cnx.commit()
     db_cnx.close()
 
@@ -83,7 +86,7 @@ def delete_investor(id: int):
     '''
         Delete an investor given an id [D]
     '''
-    db_cnx = get_cnx()
+    db_cnx: MySQLConnection = get_cnx()
     cursor = db_cnx.cursor()
     sql = 'delete from investor where id = %s'
     cursor.execute(sql, (id,))
@@ -94,21 +97,21 @@ def update_investor_name(id: int, name: str) -> None:
     '''
         Updates the investor name [U]
     '''
-    db_cnx = get_cnx()
+    db_cnx: MySQLConnection = get_cnx()
     cursor = db_cnx.cursor()
     sql = 'update investor set name = %s where id = %s'
-    cursor.execute(sql, (id, name))
+    cursor.execute(sql, (name, id))
     db_cnx.commit()
     db_cnx.close()
 
 def update_investor_status(id: int, status: str) -> None:
     '''
-        Update the inestor status [U]
+        Update the investor status [U]
     '''
-    db_cnx = get_cnx()
+    db_cnx :MySQLConnection = get_cnx()
     cursor = db_cnx.cursor()
     sql = 'update investor set status = %s where id = %s'
-    cursor.execute(sql, (id, status))
+    cursor.execute(sql, (status, id))
     db_cnx.commit()
     db_cnx.close()
 
@@ -117,55 +120,277 @@ def update_investor_status(id: int, status: str) -> None:
 '''
 def get_all_accounts() -> list[Account]:
     # Code goes here
-    pass
-
-def get_account_by_id(id: int) -> Account:
+    db_cnx: MySQLConnection =get_cnx()
+    cur=db_cnx.cursor(dictionary=True)
+    sql='select * from account'
+    cur.execute(sql)
+    rows=cur.fetchall()
+    if len(rows)==0:
+        return []
+    accounts:list[Account]=[]
+    for row in rows:
+        accounts.append(Account(row['account_number'], row['investor_id'], row['balance']))
+    db_cnx.close()
+    return rows
+def get_account_by_id(account_number: int) -> Account:
     # Code goes here
-    pass
+     db_cnx: MySQLConnection =get_cnx() #create db connection
+     cur=db_cnx.cursor(dictionary=True) #cursor from db connection, everytime you create a cursor place dictionary to true so results come back as a dict
+     sql='select * from account where account_number=%s' #sql query to get data, ? is a placeholder
+     cur.execute(sql, (account_number,))#remember tuple of 1 needs an additional comma: (1)->Not a tuple, as a tuple, the values to replace the placeholder
+     rows=cur.fetchall()
+     if len(rows) == 0:
+         return None
+     else:
+        row=rows[0]
+        account=Account(row['account_number'], row['investor_id'], row['balance'])
+        return account
+     db_cnx.close()
 
-def get_accounts_by_investor_id(id: int) -> list[Account]:
-    # Code goes here
-    pass
 
-def delete_account(id: int) -> None:
+def get_accounts_by_investor_id(investor_id: int) -> list[Account]:
     # Code goes here
-    pass
+    db_cnx: MySQLConnection =get_cnx() #create db connection
+    cur=db_cnx.cursor(dictionary=True) #cursor from db connection, everytime you create a cursor place dictionary to true so results come back as a dict
+    sql='select account_number, investor_id, balance from account where investor_id=%s' #sql query to get data, ? is a placeholder
+    cur.execute(sql, (investor_id,))#remember tuple of 1 needs an additional comma: (1)->Not a tuple, as a tuple, the values to replace the placeholder
+    rows=cur.fetchall()
+    if len(rows)==0:
+        return []
+    accounts=[]
+    for row in rows:
+        accounts.append(Account(row['account_number'], row['investor_id'], row['balance']))
+    db_cnx.close()
+    return accounts
+def delete_account(account_number: int) -> None:
+    # Code goes here Delete function
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql = 'delete from account where account_number = %s'
+    cursor.execute(sql, (account_number,))
+    db_cnx.commit() # inserts, updates, and deletes
+    db_cnx.close()
 
-def update_acct_balance(id: int, bal: float) -> None:
-    # Code goes here
-    pass
+def update_acct_balance(account_number: int, balance: float) -> None:
+    # Code goes here Update Function
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql = 'update account set balance = %s where account_number = %s'
+    cursor.execute(sql, (balance, account_number))
+    db_cnx.commit()
+    db_cnx.close()
 
 def create_account(account: Account) -> None:
-    # Code goes here
-    pass
+    # Create Function
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql = 'insert into account (investor_id, balance) values (%s, %s)'
+    cursor.execute(sql, (account.investor_id, account.balance))
+    db_cnx.commit()
+    db_cnx.close()
 
 '''
     Portfolio DAO functions
 '''
 def get_all_portfolios() -> list[Portfolio]:
-    # code goes here
-    pass
+    # code goes here Read function
+    cnx: MySQLConnection =get_cnx()
+    cur=cnx.cursor(dictionary=True)
+    sql:str='select * from portfolio'
+    cur.execute(sql)
+    rows=cur.fetchall()
+    if len(rows)==0:
+        return []
+    portfolios=[]
+    for row in rows:
+        portfolios.append(
+            Portfolio(row['account_number'], row['ticker'], row['quantity'], row['purchase_price'])
+        )
+    cnx.close()
+    return portfolios
 
-def get_porfolios_by_acct_id(acct_id: int) -> list[Portfolio]:
-    # code goes here
-    pass
+def get_portfolios_by_acct_id(account_number: int) -> list[Portfolio]:
+    # Read function
+    db_cnx: MySQLConnection =get_cnx() #create db connection
+    cur=db_cnx.cursor(dictionary=True) #cursor from db connection, everytime you create a cursor place dictionary to true so results come back as a dict
+    sql='select account_number, ticker, quantity, purchase_price from portfolio where account_number=%s' #sql query to get data, ? is a placeholder
+    cur.execute(sql, (account_number,))#remember tuple of 1 needs an additional comma: (1)->Not a tuple, as a tuple, the values to replace the placeholder
+    rows=cur.fetchall()
+    if len(rows)==0:
+        return []
+    portfolios=[]
+    for row in rows:
+        portfolios.append(
+            Portfolio(row['account_number'], row['ticker'], row['quantity'], row['purchase_price'])
+    )
+    db_cnx.close()
+    return portfolios
 
 def get_portfolios_by_investor_id(investor_id: int) -> list[Portfolio]:
-    # code goes here
-    pass
+    #Read
+    db_cnx: MySQLConnection =get_cnx() #create db connection
+    cur=db_cnx.cursor(dictionary=True) #cursor from db connection, everytime you create a cursor place dictionary to true so results come back as a dict
+    sql='select a.account_number, a.ticker, a.quantity, a.purchase_price, b.investor_id from portfolio a left join account b on a.account_number=b.account_number where b.investor_id=%s' #sql query to get data, ? is a placeholder
+    cur.execute(sql, (investor_id,))#remember tuple of 1 needs an additional comma: (1)->Not a tuple, as a tuple, the values to replace the placeholder
+    rows=cur.fetchall()
+    if len(rows)==0:
+        return []
+    portfolios:list[Portfolio]=[]
+    for row in rows:
+        portfolios.append(
+            Portfolio(row['investor_id'],row['account_number'], row['ticker'], row['quantity'], row['purchase_price'])
+    )
+    db_cnx.close()
+    return portfolios
 
-def delete_portfolio(id: int) -> None:
-    # code goes here
-    pass
+def delete_portfolio(account_number: int, ticker: str) -> None:
+    #Delete
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql = 'delete from portfolio where account_number = %s and ticker = %s'
+    cursor.execute(sql, (account_number,ticker))
+    db_cnx.commit() # inserts, updates, and deletes
+    db_cnx.close()
 
-def buy_stock(ticker: str, price: float, quantity: int) -> None:
-    # code goes here
-    pass
+def buy_stock(account_number:int,ticker: str, buy_price: float, volume: int) -> None:
+    #Read
+    # 1. update quantity in portfolio table
+    # 2. update the account balance:
 
-def sell_stock(ticket: str, quantity: int, sale_price: float) -> None:
+    volume=int(volume)
+    buy_price=float(buy_price)
+    #Retrieve current balance
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql: str ='select balance from account where account_number=%s'
+    cursor.execute(sql,(account_number,))
+    row=cursor.fetchone()
+    current_balance= float(row[0])
+    db_cnx.close()
+
+    #check if funds are sufficient
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    total_stock_price=buy_price*volume
+    if total_stock_price>current_balance:
+        print("Insufficient Funds to make this Trade")
+        return None
+
+    #update balance
+    sql:str='update account set balance=balance-%s where account_number=%s'
+    cursor.execute(sql,(total_stock_price,account_number))
+    db_cnx.commit()
+    db_cnx.close()
+
+    #create list of stocks in portfolio
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor(dictionary=True)
+    sql: str ='select distinct ticker from portfolio where account_number=%s'
+    cursor.execute(sql, (account_number,))
+    rows=cursor.fetchall()
+    stocks:list=[]
+    for row in rows:
+        for key, value in row.items():
+            stocks.append(value)
+    db_cnx.close()
+
+    #check if ticker in list
+    #update quantity
+    #insert values
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    if ticker not in stocks:
+        sql:str='insert into portfolio(account_number, ticker, quantity, purchase_price) values (%s,%s,%s,%s)'
+        cursor.execute(sql, (account_number, ticker, volume, buy_price))
+        db_cnx.commit()
+
+    else:
+        sql:str='update portfolio set quantity=quantity+%s where account_number=%s and ticker=%s'
+        cursor.execute(sql,(volume, account_number,ticker))
+        db_cnx.commit()
+
+    db_cnx.close()
+
+    # get current quantity
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql:str='select quantity from portfolio where account_number=%s and ticker=%s'
+    cursor.execute(sql, (account_number, ticker))
+    row=cursor.fetchone()
+    current_quantity=row[0]
+    db_cnx.close()
+
+    #average out purchase price
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql:str='update portfolio set purchase_price=((purchase_price*%s)+(%s*%s))/(%s+%s)'
+    cursor.execute(sql, (current_quantity, volume, buy_price, current_quantity,volume))
+    db_cnx.commit()
+
+
+
+
+def sell_stock(account_number:int,ticker: str, sale_price:float, volume: int) -> None:
     # 1. update quantity in portfolio table
     # 2. update the account balance:
     # Example: 10 APPL shares at $1/share with account balance $100
     # event: sale of 2 shares for $2/share
     # output: 8 APPLE shares at $1/share with account balance = 100 + 2 * (12 - 10) = $104
-    pass
+    #Read Function
+
+    #sale_price*volume to get total dollars
+    volume=int(volume)
+    # get current quantity
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql:str='select quantity from portfolio where account_number=%s and ticker=%s'
+    cursor.execute(sql, (account_number, ticker))
+    row=cursor.fetchone()
+    current_quantity=int(row[0])
+    db_cnx.close()
+
+    #make sure not to sell more than we have
+    db_cnx: MySQLConnection =get_cnx()
+    cursor=db_cnx.cursor()
+    if current_quantity < volume:
+        print("You do not have sufficient shares to sell")
+        return None
+
+    elif current_quantity==volume:
+        sql:str='delete from portfolio where account_number=%s and ticker=%s'
+        cursor.execute(sql, (account_number, ticker))
+        db_cnx.commit()
+
+    elif current_quantity>volume:
+        sql:str='update portfolio set quantity=%s-%s where account_number=%s and ticker=%s'
+        cursor.execute(sql, (current_quantity,volume,account_number, ticker))
+        db_cnx.commit()
+    db_cnx.close()
+
+    #update balance with total sale price
+    total_sale=sale_price*volume
+    db_cnx: MySQLConnection = get_cnx()
+    cursor = db_cnx.cursor()
+    sql:str='update account set balance=balance+%s where account_number=%s'
+    cursor.execute(sql,(total_sale, account_number))
+    db_cnx.commit()
+
+    db_cnx: MySQLConnection =get_cnx()
+    cursor=db_cnx.cursor()
+    sql: str='delete from portfolio where quantity=0'
+    cursor.execute(sql)
+    db_cnx.commit()
+    db_cnx.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
