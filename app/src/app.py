@@ -7,24 +7,22 @@ import app.src.db.dao as dao
 from app.src.api.blueprint.investorbp import investor_bp
 from app.src.api.blueprint.accountbp import account_bp
 from app.src.api.blueprint.portfoliobp import portfolio_bp
+from app.src.api.blueprint.uibp import uibp
 
 app=Flask(__name__) #instantiates the flask class
+app.route('/')
 
 app.register_blueprint(investor_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(portfolio_bp)
+app.register_blueprint(uibp)
 
 
 
 
 
 
-#transaction routes?
-def buy_stock():
-    pass
 
-def sell_stock():
-    pass
 #investor object needs to be encoded into json
 #JSON encoding: converting python objects to json format so that the client can understand the data
 #data that i sent back from the server should adhere to JSON format
